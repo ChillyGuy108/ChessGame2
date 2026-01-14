@@ -37,8 +37,12 @@ public class Pawn extends Piece {
      */
     public Pawn(Pawn original) {
         super(original);
+        this.hasMovedTwo = original.hasMovedTwo;
+        this.enPassantLeft = original.enPassantLeft;
+        this.enPassantRight = original.enPassantRight;
+        this.previousCoordinate = new Coordinate(original.previousCoordinate);
+        this.promotedPiece = original.promotedPiece != null ? original.promotedPiece.makeCopy() : null;
     }
-
     /**
      * Устанавливает предыдущую координату пешки
      * @param previousCoordinate предыдущая координата
@@ -219,16 +223,33 @@ public class Pawn extends Piece {
 
     @Override
     public ArrayList<Coordinate> getRawMoves(Pieces pieces) {
-
         ArrayList<Coordinate> pawnMoves = new ArrayList<>();
 
+        // Проверка возможности взятия по диагонали
         if (canEatLeftDig(pieces))
             pawnMoves.addAll(Move.frontLDigFree(pieces, this, 1));
 
-        pawnMoves.addAll(pawnForward(pieces));
-
         if (canEatRightDig(pieces))
             pawnMoves.addAll(Move.frontRDigFree(pieces, this, 1));
+
+        // Обычный ход вперед на одну клетку
+        pawnMoves.addAll(pawnForward(pieces));
+
+        // Ход на две клетки вперед при первом ходе пешки
+        // Проверяем, что пешка еще не двигалась и клетка впереди пустая
+        if (!getHasMoved()) {
+            ArrayList<Coordinate> twoStepForward = Move.frontFree(pieces, this, 2);
+            // Проверяем, что обе клетки впереди свободны
+            if (twoStepForward.size() >= 2) {
+                Coordinate firstStep = twoStepForward.get(0);
+                Coordinate secondStep = twoStepForward.get(1);
+
+                // Проверяем, что первая клетка свободна
+                if (!Move.tileFull(pieces, firstStep) && !Move.tileFull(pieces, secondStep)) {
+                    pawnMoves.add(secondStep);
+                }
+            }
+        }
 
         return pawnMoves;
     }

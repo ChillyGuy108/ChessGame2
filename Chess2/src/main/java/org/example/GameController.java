@@ -96,11 +96,27 @@ public class GameController {
      * @see Pieces#makeMove(Coordinate, Piece)
      */
     private void handleMove(Coordinate targetCoordinate) {
-        // Обработка продвижения пешки
+        // Проверяем превращение пешки ДО выполнения хода
         if (selectedPiece.getName() == ID.PAWN) {
             Pawn pawn = (Pawn) selectedPiece;
+
+            // Проверяем, является ли это ходом на две клетки
+            Coordinate currentCoord = selectedPiece.getCoords();
+            int distance = Math.abs(targetCoordinate.getRank() - currentCoord.getRank());
+
+            if (distance == 2) {
+                pawn.setHasMovedTwo(); // Устанавливаем флаг хода на две клетки
+            }
+
+
             if (pawn.canPromoteBlack(targetCoordinate) || pawn.canPromoteWhite(targetCoordinate)) {
+
                 PawnPromotionHandler.handlePawnPromotion(pawn, targetCoordinate);
+            }
+
+
+            if (!pawn.getHasMoved()) {
+                pawn.setHasMovedTwo();
             }
         }
 
@@ -117,6 +133,7 @@ public class GameController {
 
         resetSelection();
     }
+
 
     /**
      * Сбрасывает состояние выбора фигуры.

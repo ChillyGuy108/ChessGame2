@@ -34,6 +34,7 @@ public class PawnPromotionHandler {
         UIManager.put("Panel.background", INFO_COLOR);
         UIManager.put("OptionPane.messageForeground", Color.white);
 
+
         JOptionPane.showOptionDialog(
                 null,
                 "Ваша пешка стала ферзём.",

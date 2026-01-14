@@ -115,6 +115,9 @@ public class InfoPanel extends JPanel {
         movePane.setText(moveHistoryManager.getFullMoveHistory());
     }
 
+
+
+
     /**
      * Отображает результат игры в специальной области панели.
      * Используется для показа мата, пата или ничьей по завершении партии.

@@ -13,7 +13,7 @@ public enum BOARD {
     /** Первая горизонталь (ранг) доски */
     FIRST_RANK(1),
     /** Последняя горизонталь (ранг) доски */
-    LAST_RANK(10);
+    LAST_RANK(8);
 
     private char fileVal;
     private int rankVal;
