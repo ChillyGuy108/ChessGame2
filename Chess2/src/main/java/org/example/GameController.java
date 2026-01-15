@@ -10,6 +10,8 @@ import org.example.Coordinate;
 import org.example.Pieces;
 import org.example.Pawn;
 import org.example.Piece;
+import org.example.King;
+import org.example.Rook;
 
 /**
  * Главный контроллер игры, управляющий логикой шахматного приложения.
@@ -61,19 +63,119 @@ public class GameController {
             }
         } else {
             // Второй клик - попытка хода
-            if (selectedPiece != null && selectedPiece.isValidMove(coordinate, currentTurn)) {
-                handleMove(coordinate);
-            } else {
-                // Если кликнули на другую свою фигуру - выбираем её
-                if (clickedPiece != null && clickedPiece.getColour() == currentTurn) {
-                    selectPiece(clickedPiece);
+            if (selectedPiece != null) {
+                // Проверяем, является ли ход рокировкой
+                if (selectedPiece.getName() == ID.KING && isCastlingMove(coordinate)) {
+                    handleCastlingMove(coordinate);
+                }
+                // Проверяем обычный ход
+                else if (selectedPiece.isValidMove(coordinate, currentTurn)) {
+                    handleMove(coordinate);
                 } else {
-                    resetSelection();
+                    // Если кликнули на другую свою фигуру - выбираем её
+                    if (clickedPiece != null && clickedPiece.getColour() == currentTurn) {
+                        selectPiece(clickedPiece);
+                    } else {
+                        resetSelection();
+                    }
                 }
             }
         }
     }
 
+    /**
+     * Проверяет, является ли ход рокировкой
+     * @param targetCoordinate целевая координата
+     * @return true если это ход рокировки
+     */
+    private boolean isCastlingMove(Coordinate targetCoordinate) {
+        if (selectedPiece.getName() != ID.KING) {
+            return false;
+        }
+
+        King king = (King) selectedPiece;
+        Coordinate currentCoord = king.getCoords();
+
+        // Проверяем, что король перемещается на две клетки по горизонтали
+        int fileDiff = Math.abs(targetCoordinate.getFile() - currentCoord.getFile());
+        int rankDiff = Math.abs(targetCoordinate.getRank() - currentCoord.getRank());
+
+        return fileDiff == 2 && rankDiff == 0;
+    }
+
+    /**
+     * Обрабатывает ход рокировки
+     * @param targetCoordinate целевая координата для короля
+     */
+    private void handleCastlingMove(Coordinate targetCoordinate) {
+        King king = (King) selectedPiece;
+        Coordinate currentCoord = king.getCoords();
+
+        // Определяем сторону рокировки
+        boolean isKingside = targetCoordinate.getFile() > currentCoord.getFile();
+
+        // Получаем координаты для рокировки
+        Coordinate kingTargetCoord;
+        Rook rook;
+        Coordinate rookTargetCoord;
+
+        if (isKingside) {
+            if (!king.canCastleKing(pieces)) {
+                resetSelection();
+                return;
+            }
+            kingTargetCoord = king.getCastleCoordKingK();
+            rook = king.getRookKing();
+            rookTargetCoord = rook.getCastleCoordRook(); // F1/F8 для короткой рокировки
+        } else {
+            if (!king.canCastleQueen(pieces)) {
+                resetSelection();
+                return;
+            }
+            kingTargetCoord = king.getCastleCoordKingQ();
+            rook = king.getRookQueen();
+            rookTargetCoord = rook.getCastleCoordRook(); // D1/D8 для длинной рокировки
+        }
+
+        if (!targetCoordinate.equals(kingTargetCoord)) {
+            resetSelection();
+            return;
+        }
+
+        // Сохраняем исходные координаты
+        Coordinate kingOriginalCoord = king.getCoords();
+        Coordinate rookOriginalCoord = rook.getCoords();
+
+        // Удаляем фигуры с исходных позиций
+        pieces.getPieces().remove(kingOriginalCoord);
+        pieces.getPieces().remove(rookOriginalCoord);
+
+        // Обновляем координаты фигур
+        king.setCoords(kingTargetCoord);
+        rook.setCoords(rookTargetCoord);
+
+        // Размещаем фигуры на новых позициях
+        pieces.addPiece(kingTargetCoord, king);
+        pieces.addPiece(rookTargetCoord, rook);
+
+        king.setHasMoved();
+        rook.setHasMoved();
+
+        // Обновляем потенциальные ходы
+        pieces.updatePotentials();
+        boardPanel.updateBoard(pieces);
+
+        // Создаем специальную координату для рокировки
+        Coordinate castlingNotationCoord = isKingside
+                ? new Coordinate('O', 0)  // O-O
+                : new Coordinate('Q', 0); // O-O-O (Q для Queen's side)
+
+        infoPanel.recordMove(castlingNotationCoord, king, pieces, currentTurn);
+
+        switchTurn();
+        checkGameState();
+        resetSelection();
+    }
     /**
      * Выбирает фигуру для последующего хода.
      * Подсвечивает возможные ходы для выбранной фигуры на доске.
@@ -83,7 +185,26 @@ public class GameController {
     private void selectPiece(Piece piece) {
         this.selectedPiece = piece;
         this.clickCounter = 1;
-        boardPanel.highlightPossibleMoves(piece.getPotentialMoves());
+
+        // Получаем все возможные ходы
+        var possibleMoves = piece.getPotentialMoves();
+
+        // Если это король, добавляем координаты рокировки в возможные ходы
+        if (piece.getName() == ID.KING) {
+            King king = (King) piece;
+
+            // Проверяем рокировку на королевский фланг
+            if (king.canCastleKing(pieces)) {
+                possibleMoves.add(king.getCastleCoordKingK());
+            }
+
+            // Проверяем рокировку на ферзевый фланг
+            if (king.canCastleQueen(pieces)) {
+                possibleMoves.add(king.getCastleCoordKingQ());
+            }
+        }
+
+        boardPanel.highlightPossibleMoves(possibleMoves);
     }
 
     /**
@@ -122,6 +243,11 @@ public class GameController {
 
         // Выполняем ход
         pieces.makeMove(targetCoordinate, selectedPiece);
+
+        // Обновляем флаг перемещения для фигуры (кроме пешек, у которых своя логика)
+        if (selectedPiece.getName() != ID.PAWN) {
+            selectedPiece.setHasMoved();
+        }
 
         // Обновляем UI
         boardPanel.updateBoard(pieces);

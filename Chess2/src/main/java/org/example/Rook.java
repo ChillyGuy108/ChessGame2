@@ -70,4 +70,7 @@ public class Rook extends Piece {
         return front;
     }
 
+
+
+
 }

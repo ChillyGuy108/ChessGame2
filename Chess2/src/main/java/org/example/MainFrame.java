@@ -66,4 +66,7 @@ public class MainFrame extends JFrame {
         pieces.setGUIGame(true);
         new MainFrame(pieces);
     }
+
+
+
 }

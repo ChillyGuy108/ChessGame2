@@ -110,11 +110,13 @@ public class InfoPanel extends JPanel {
      * @param pieces объект, содержащий текущее состояние шахматных фигур
      * @param turn цвет игрока, сделавшего ход
      */
+
+
+
     public void recordMove(Coordinate coordinate, Piece piece, Pieces pieces, COLOUR turn) {
         moveHistoryManager.recordMove(coordinate, piece, pieces, turn);
         movePane.setText(moveHistoryManager.getFullMoveHistory());
     }
-
 
 
 
